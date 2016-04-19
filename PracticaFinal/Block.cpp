@@ -7,13 +7,17 @@ SubBlock::SubBlock()
     m_width = 1;
     m_height = 1;
     ID = 0;
+    m_game = nullptr;
 }
 
-SubBlock::SubBlock(uint32 &id)
+SubBlock::SubBlock(Game* game)
 {
     m_width = 1;
     m_height = 1;
-    ID = id++;
+    m_game = game;
+
+    ID = game->GetCurrentBlockID();
+    game->IncreaseCurrentBlockID();
 }
 
 SubBlock::~SubBlock()
@@ -49,14 +53,14 @@ void Block::GenerateSubBlocks()
     Position* positions = Block::GetPositionsOfType(m_type);
     for (uint8 i = 0; i < NUM_BLOCK_SUBBLOCKS; i++)
     {
-        SubBlock* sub = new SubBlock(currentID);
+        SubBlock* sub = new SubBlock(m_game);
         Position pos = positions[i];
         SetColor(Block::GetColorByType(m_type));
         sub->SetColor(Block::GetColorByType(m_type));
         sub->SetPosition(pos);
         m_subBlocks.push_back(sub);
 
-        DEBUG_LOG("SubBlock created in position X: %f, Y: %f\n", pos.x, pos.y);
+        DEBUG_LOG("SubBlock ID: %u created in position X: %f, Y: %f\n", sub->GetID(), pos.x, pos.y);
     }
 }
 
@@ -90,10 +94,47 @@ void Block::RotateBlock()
 
     DEBUG_LOG("rotation %d, %f\n", newRotation, newFloatRotation);
 
+
     for(SubBlock* sub : m_subBlocks)
     {
-        sub->SetPositionX(sub->GetPositionX() + 1 * cos(newFloatRotation));
-        sub->SetPositionY(sub->GetPositionY() + 1 * sin(newFloatRotation));
+        /*
+        
+        [oldPosX]      [cos][-sin][0]      [newPosX]
+        [oldPosY]  x   [sin][ cos][0]  =   [newPosY]
+        [      1]      [  0][   0][1]      [      1]
+        
+        
+        */
+
+        float oldPosX = sub->GetPositionX();
+        float oldPosY = sub->GetPositionY();
+        float newPosX = 0.0f;
+        float newPosY = 0.0f;
+        float _a[1][3] = { { oldPosX, oldPosY, 1.0f } };
+        float matrix[3][3] = {
+            {cos(newFloatRotation), -sin(newFloatRotation), 0.0f },
+            {sin(newFloatRotation),  cos(newFloatRotation), 0.0f },
+            {                 0.0f,                   1.0f, 1.0f }
+        };
+        float a[1][3] = { { newPosX, newPosY, 1.0f } };
+
+        uint8 c, d, k = 0;
+        float sum = 0.0f;
+        for (c = 0; c < 1; c++) {
+            for (d = 0; d < 3; d++) {
+                for (k = 0; k < 3; k++) {
+                    sum = sum + _a[c][k] * matrix[k][d];
+                }
+ 
+                a[c][d] = sum;
+                sum = 0;
+            }
+        }
+
+        sub->SetPositionX(a[0][0]);
+        sub->SetPositionY(a[0][1]);
+
+        DEBUG_LOG("SubBlock OldPosition: (%f, %f), newPosition: (%f, %f)\n", oldPosX, oldPosY, sub->GetPositionX(), sub->GetPositionY());
     }
 
     m_position.rotation = float(newRotation);
@@ -144,15 +185,30 @@ Position* Block::GetPositionsOfType(uint8 type)
 
 void Block::Drop()
 {
-    if (m_position.y == 0.0f)
-        return;
-
     float posY = m_position.y;
 
-    for (posY; posY > 0.0f; posY--)
+    bool found = false;
+    for (SubBlock* sub : GetSubBlocks())
     {
-        if (m_game->GetSubBlockInPosition(m_position.x, posY - 1.0f))
+        if (found)
             break;
+
+        posY = m_position.y;
+        for (posY; posY > 0.0f; posY--)
+        {
+            if (posY + sub->GetPositionY() <= 0.0f)
+            {
+                found = true;
+                break;
+            }
+
+            if (SubBlock* temp = m_game->GetSubBlockInPosition(m_position.x + sub->GetPositionX(), posY + sub->GetPositionY()))
+            {
+                found = true;
+                DEBUG_LOG("Block %d hits with block %d\n", sub->GetID(), temp->GetID());
+                break;
+            }
+        }
     }
 
     if (m_position.y != posY)
@@ -161,11 +217,14 @@ void Block::Drop()
 
 bool Block::CanDropBlock()
 {
-    if (m_position.y == 0.0f)
-        return false;
+    for (SubBlock* sub : GetSubBlocks())
+    {
+        if (m_position.y + sub->GetPositionY() <= 0.0f)
+            return false;
 
-    if (m_game->GetSubBlockInPosition(m_position.x, m_position.y - 1))
-        return false;
+        if (m_game->GetSubBlockInPosition(m_position.x + sub->GetPositionX(), m_position.y + sub->GetPositionY()))
+            return false;
+    }
 
     return true;
 }
@@ -195,9 +254,6 @@ uint8 Block::GetColorByType(uint8 type)
     uint8 color = COLOR_WHITE;
     switch (type)
     {
-    case TYPE_CUBE:
-        color = COLOR_WHITE;
-        break;
     case TYPE_PRISM:
         color = COLOR_GREEN;
         break;
@@ -210,6 +266,7 @@ uint8 Block::GetColorByType(uint8 type)
     case TYPE_T:
         color = COLOR_PINK;
         break;
+    case TYPE_CUBE:
     default:
         break;
     }

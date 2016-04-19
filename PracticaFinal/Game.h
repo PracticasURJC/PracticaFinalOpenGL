@@ -22,7 +22,7 @@ public:
 
     void GenerateBlock(int32 type = -1);
 
-    void DestroyActiveBlock();
+    void DestroyActiveBlock(bool withSave = true);
 
     uint64 GetNextMoveTime();
 
@@ -31,6 +31,7 @@ public:
     void MoveBlock(bool right);
     void DropBlock();
     void HandleDropBlock();
+    void ChangeBlock();
 
     void CheckLineCompleted();
     void CheckGameLost();
@@ -47,6 +48,7 @@ public:
 
     uint32 GetCurrentBlockID() { return m_currentBlockId; }
     void SetCurrentBlockID(uint32 _currentBlockId) { m_currentBlockId = _currentBlockId; }
+    void IncreaseCurrentBlockID() { m_currentBlockId++; }
 
     Block* GetActiveBlock() { return m_activeBlock; }
     const Block* GetActiveBlock() const { return m_activeBlock; }

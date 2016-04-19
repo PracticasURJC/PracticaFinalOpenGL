@@ -44,7 +44,7 @@ class SubBlock
 public:
 
     SubBlock();
-    SubBlock(uint32 &id);
+    SubBlock(Game* game);
     ~SubBlock();
 
     void Delete();

@@ -5,10 +5,10 @@
 #include "Common.h"
 #include "Block.h"
 #include "Game.h"
-//#include "RgbImage.h"
+#include "RgbImage.h"
 
 #define SCREEN_SIZE     1000, 500
-#define SCREEN_POSITION   50,  50
+#define SCREEN_POSITION 800,  400
 #define SCREEN_COLOR     0.0, 0.0, 0.0, 0.0
 #define DOUBLE_CLICK_TIME 250
 
@@ -24,12 +24,12 @@ void funMotionPassive(int x, int y);
 void funMouseWheel(int wheel, int direction, int x, int y);
 void drawFrame();
 void drawPanel();
-void drawNumber(uint8 number);
 void drawBlocks();
 void drawBlock(Block* block);
 void drawSubBlock(SubBlock* sub);
 void drawBasicBlock(bool withBorder = true);
 void initLights();
+void initTextures();
 void selectColor(uint8 color);
 void generateRandomBlock();
 
@@ -107,6 +107,7 @@ void initFunc() {
     glEnable(GL_POLYGON_OFFSET_FILL);
     glEnable(GL_CULL_FACE);
     initLights();
+    initTextures();
     //initTextures();
     //glEnable(GL_CULL_FACE);
     //glCullFace(GL_BACK);
@@ -130,7 +131,6 @@ void initLights()
     glShadeModel(GL_SMOOTH);
     glEnable(GL_NORMALIZE);
 
-    // Brillo del sol
     GLfloat Ia0[] = { 0.5, 0.5, 0.5, 1.0 };
     GLfloat Id0[] = { 1.0, 1.0, 1.0, 1.0 };
     GLfloat Is0[] = { 1.0, 1.0, 1.0, 1.0 };
@@ -143,6 +143,35 @@ void initLights()
     glLightf (GL_LIGHT0, GL_LINEAR_ATTENUATION   , 0.01f);
     glLightf (GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.01f);
     glEnable(GL_LIGHT0);
+}
+
+GLuint textureName[1];
+
+void initTextures()
+{
+    glEnable(GL_TEXTURE_2D);
+    glGenTextures(1, textureName);
+    
+    const char *filename[1] = { "textura.bmp"};
+    for(unsigned i = 0; i < 1; i++)
+    {
+        // Cargamos la textura
+        glBindTexture(GL_TEXTURE_2D, textureName[i]);
+        RgbImage texture(filename[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texture.GetNumCols(), texture.GetNumRows(), 0, GL_RGB, GL_UNSIGNED_BYTE, texture.ImageData());
+        gluBuild2DMipmaps(GL_TEXTURE_2D, 3, texture.GetNumCols(), texture.GetNumRows(), GL_RGB, GL_UNSIGNED_BYTE, texture.ImageData());
+    
+        // Configuramos la textura
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        /*glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+        glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+        glEnable(GL_TEXTURE_GEN_S);
+        glEnable(GL_TEXTURE_GEN_T);*/
+    }
 }
 
 void funReshape(int w, int h) {
@@ -160,6 +189,9 @@ void funKeyboardUp(unsigned char key, int x, int y)
 {
     switch (key)
     {
+    case 'c':
+        game->ChangeBlock();
+        break;
     case ' ':
         game->RotateActiveBlock();
         break;
@@ -243,10 +275,8 @@ void funDisplay()
 
 void funIdle()
 {
-    if (stopped)
-        return;
-
-    game->Update();
+    if (!stopped)
+        game->Update();
 
     drawFrame();
 }
@@ -271,8 +301,6 @@ void drawFrame()
     glScaled(0.5f, 0.5f, 0.5f);
     drawPanel();
     drawBlocks();
-
-    drawNumber(110);
     
     // Intercambiamos los buffers
     glutSwapBuffers();
@@ -328,8 +356,8 @@ void drawBlock(Block* block)
     glTranslatef(block->GetPositionX() + correction[0], block->GetPositionY() + correction[1], block->GetPositionZ());
 
     // Cube should not rotate
-    if (block->GetType() != TYPE_CUBE)
-        glRotatef(block->GetRotation(), 0.0f, 0.0f, 1.0f);
+    //if (block->GetType() != TYPE_CUBE)
+    //    glRotatef(block->GetRotation(), 0.0f, 0.0f, 1.0f);
 
     if (correction[0] != 0.0f || correction[1] != 0.0f)
         glTranslatef(-correction[0], -correction[1], 0.0f);
@@ -425,17 +453,68 @@ void selectColor(uint8 color)
     }
 }
 
+void drawCube(GLfloat size)
+{
+    GLfloat dimension = size / 2.0f;
+
+   // draw a cube (6 quadrilaterals)
+    glBegin(GL_QUADS);				// start drawing the cube.
+ 
+	    // Front Face
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-dimension, -dimension,  dimension);	// Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( dimension, -dimension,  dimension);	// Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( dimension,  dimension,  dimension);	// Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-dimension,  dimension,  dimension);	// Top Left Of The Texture and Quad
+ 
+	    // Back Face
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-dimension, -dimension, -dimension);	// Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-dimension,  dimension, -dimension);	// Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( dimension,  dimension, -dimension);	// Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( dimension, -dimension, -dimension);	// Bottom Left Of The Texture and Quad
+ 
+	    // Top Face
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-dimension,  dimension, -dimension);	// Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-dimension,  dimension,  dimension);	// Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( dimension,  dimension,  dimension);	// Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( dimension,  dimension, -dimension);	// Top Right Of The Texture and Quad
+ 
+	    // Bottom Face
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-dimension, -dimension, -dimension);	// Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( dimension, -dimension, -dimension);	// Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( dimension, -dimension,  dimension);	// Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-dimension, -dimension,  dimension);	// Bottom Right Of The Texture and Quad
+ 
+	    // Right face
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( dimension, -dimension, -dimension);	// Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( dimension,  dimension, -dimension);	// Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f( dimension,  dimension,  dimension);	// Top Left Of The Texture and Quad
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f( dimension, -dimension,  dimension);	// Bottom Left Of The Texture and Quad
+ 
+	    // Left Face
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-dimension, -dimension, -dimension);	// Bottom Left Of The Texture and Quad
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f(-dimension, -dimension,  dimension);	// Bottom Right Of The Texture and Quad
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f(-dimension,  dimension,  dimension);	// Top Right Of The Texture and Quad
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-dimension,  dimension, -dimension);	// Top Left Of The Texture and Quad
+ 
+    glEnd();					// Done Drawing The Cube
+ 
+}
+
 void drawBasicBlock(bool withBorder /*=true*/)
 {
     selectColor(color);
-    glutSolidCube(1.0f);
 
-    if (withBorder)
+    glBindTexture(GL_TEXTURE_2D, textureName[0]);
+    drawCube(1.0f);
+    //glutSolidCube(1.0f);
+
+
+    /*if (withBorder)
     {
         glLineWidth(2.0);
         selectColor(COLOR_BLACK);
         glutWireCube(1.0f);
-    }
+    }*/
 }
 
 void drawPanel()
@@ -475,10 +554,4 @@ void drawPanel()
     }
     glPopMatrix();
     color = oldColor;
-}
-
-void drawNumber(uint8 number)
-{
-    glRasterPos2f(0.0f, 0.0f);
-    glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_10, number);
 }

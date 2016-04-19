@@ -54,6 +54,7 @@ void Game::GenerateBlock(int32 type /*=-1*/)
 {
     if (type < 0)
     {
+        // Prevent generate the same block twice in a row
         do
         {
             type = rand() % (MAX_BLOCK_TYPE) + 1;
@@ -74,7 +75,7 @@ void Game::GenerateBlock(int32 type /*=-1*/)
     DEBUG_LOG("Block type: %d succesfully created.\n", type);
 }
 
-void Game::DestroyActiveBlock()
+void Game::DestroyActiveBlock(bool withSave /*=true*/)
 {
     if (!m_activeBlock)
     {
@@ -82,11 +83,14 @@ void Game::DestroyActiveBlock()
         return;
     }
 
-    for (SubBlock* sub : m_activeBlock->GetSubBlocks())
+    if (withSave)
     {
-        sub->SetPositionX(sub->GetPositionX() + m_activeBlock->GetPositionX());
-        sub->SetPositionY(sub->GetPositionY() + m_activeBlock->GetPositionY());
-        m_gameBlocks.push_back(sub);
+        for (SubBlock* sub : m_activeBlock->GetSubBlocks())
+        {
+            sub->SetPositionX(sub->GetPositionX() + m_activeBlock->GetPositionX());
+            sub->SetPositionY(sub->GetPositionY() + m_activeBlock->GetPositionY());
+            m_gameBlocks.push_back(sub);
+        }
     }
 
     delete m_activeBlock;
@@ -199,4 +203,10 @@ SubBlock* Game::GetSubBlockInPosition(float x, float y)
         }
 
     return sub;
+}
+
+void Game::ChangeBlock()
+{
+    DestroyActiveBlock(false);
+    GenerateBlock();
 }
