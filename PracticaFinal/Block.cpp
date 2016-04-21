@@ -26,13 +26,30 @@ SubBlock::~SubBlock()
 
 void SubBlock::Delete()
 {
-    
+    m_game->DeleteSubBlock(this);
 }
 
-Block::Block(uint8 _type, Game* _game, float x, float y)
+bool SubBlock::CanDropSubBlock()
 {
-    m_type = _type;
-    m_game = _game;
+    if (m_position.y <= 0.0f)
+    {
+        DEBUG_LOG("Block %d hit, can't be dropped (<0).\n", ID);
+        return false;
+    }
+
+    if (SubBlock* temp = m_game->GetSubBlockInPosition(m_position.x, m_position.y - 1.0f))
+    {
+        DEBUG_LOG("Block %d hits with block %d\n", ID, temp->GetID());
+        return false;
+    }
+
+    return true;
+}
+
+Block::Block(uint8 type, Game* game, float x, float y)
+{
+    m_type = type;
+    m_game = game;
     m_position.x = x;
     m_position.y = y;
     m_subBlocks.clear();
@@ -86,59 +103,56 @@ void Block::CalculateDimensions()
     DEBUG_LOG("Dimensions of block %u. Height: %d, Width: %d\n", m_type, m_height, m_width);
 }
 
+bool Block::CanRotateBlock()
+{
+    // Cube should not rotate
+    if (m_type == TYPE_CUBE)
+        return false;
+
+    for (SubBlock* sub : m_subBlocks)
+    {
+        float oldPosX = sub->GetPositionX();
+        float oldPosY = sub->GetPositionY();
+        float newPosX = oldPosX * cos(M_PI_2) - oldPosY * sin(M_PI_2);
+        float newPosY = oldPosX * sin(M_PI_2) + oldPosY * cos(M_PI_2);
+
+        if (m_position.x + newPosX < 0 || m_position.x + newPosX >= MAX_WIDTH - 1)
+            return false;
+
+        if (m_position.y + newPosY < 0)
+            return false;
+
+        if (m_game->GetSubBlockInPosition(m_position.x + newPosX, m_position.y + newPosY))
+            return false;
+    }
+    return true;
+}
+
+
 void Block::RotateBlock()
 {
+    if (!CanRotateBlock())
+        return;
+
     uint32 newRotation = uint32(m_position.rotation) + 90 % 360;
 
-    float newFloatRotation = newRotation * 2* M_PI / 360.0f;
-
-    DEBUG_LOG("rotation %d, %f\n", newRotation, newFloatRotation);
-
+    DEBUG_LOG("rotation %d\n", newRotation);
 
     for(SubBlock* sub : m_subBlocks)
     {
-        /*
-        
-        [oldPosX]      [cos][-sin][0]      [newPosX]
-        [oldPosY]  x   [sin][ cos][0]  =   [newPosY]
-        [      1]      [  0][   0][1]      [      1]
-        
-        
-        */
-
         float oldPosX = sub->GetPositionX();
         float oldPosY = sub->GetPositionY();
-        float newPosX = 0.0f;
-        float newPosY = 0.0f;
-        float _a[1][3] = { { oldPosX, oldPosY, 1.0f } };
-        float matrix[3][3] = {
-            {cos(newFloatRotation), -sin(newFloatRotation), 0.0f },
-            {sin(newFloatRotation),  cos(newFloatRotation), 0.0f },
-            {                 0.0f,                   1.0f, 1.0f }
-        };
-        float a[1][3] = { { newPosX, newPosY, 1.0f } };
+        float newPosX = oldPosX * cos(M_PI_2) - oldPosY * sin(M_PI_2);
+        float newPosY = oldPosX * sin(M_PI_2) + oldPosY * cos(M_PI_2);
 
-        uint8 c, d, k = 0;
-        float sum = 0.0f;
-        for (c = 0; c < 1; c++) {
-            for (d = 0; d < 3; d++) {
-                for (k = 0; k < 3; k++) {
-                    sum = sum + _a[c][k] * matrix[k][d];
-                }
- 
-                a[c][d] = sum;
-                sum = 0;
-            }
-        }
-
-        sub->SetPositionX(a[0][0]);
-        sub->SetPositionY(a[0][1]);
+        sub->SetPositionX(newPosX);
+        sub->SetPositionY(newPosY);
 
         DEBUG_LOG("SubBlock OldPosition: (%f, %f), newPosition: (%f, %f)\n", oldPosX, oldPosY, sub->GetPositionX(), sub->GetPositionY());
     }
 
-    m_position.rotation = float(newRotation);
     CalculateDimensions();
+    m_position.rotation = float(newRotation);
 }
 
 Position* Block::GetPositionsOfType(uint8 type)
@@ -153,10 +167,10 @@ Position* Block::GetPositionsOfType(uint8 type)
             positions[3] = {1.0f, 1.0f};
             break;
         case TYPE_PRISM:
-            positions[0] = {0.0f, 0.0f};
-            positions[1] = {1.0f, 0.0f};
-            positions[2] = {2.0f, 0.0f};
-            positions[3] = {3.0f, 0.0f};
+            positions[0] = {-1.0f, 0.0f};
+            positions[1] = {0.0f, 0.0f};
+            positions[2] = {1.0f, 0.0f};
+            positions[3] = {2.0f, 0.0f};
             break;
         case TYPE_T:
             positions[0] = {0.0f, 0.0f};
@@ -185,24 +199,23 @@ Position* Block::GetPositionsOfType(uint8 type)
 
 void Block::Drop()
 {
-    float posY = m_position.y;
-
     bool found = false;
-    for (SubBlock* sub : GetSubBlocks())
+
+    float posY = m_position.y;
+    for (posY; posY > 0.0f; posY -= 1.0f)
     {
         if (found)
             break;
 
-        posY = m_position.y;
-        for (posY; posY > 0.0f; posY--)
+        for (SubBlock* sub : GetSubBlocks())
         {
-            if (posY + sub->GetPositionY() <= 0.0f)
+            if (posY + sub->GetPositionY() - 1.0f <= 0.0f)
             {
                 found = true;
                 break;
             }
 
-            if (SubBlock* temp = m_game->GetSubBlockInPosition(m_position.x + sub->GetPositionX(), posY + sub->GetPositionY()))
+            if (SubBlock* temp = m_game->GetSubBlockInPosition(m_position.x + sub->GetPositionX(), posY + sub->GetPositionY() - 2.0f))
             {
                 found = true;
                 DEBUG_LOG("Block %d hits with block %d\n", sub->GetID(), temp->GetID());
@@ -220,10 +233,16 @@ bool Block::CanDropBlock()
     for (SubBlock* sub : GetSubBlocks())
     {
         if (m_position.y + sub->GetPositionY() <= 0.0f)
+        {
+            DEBUG_LOG("Block %d hits can't be dropped (<0).\n", sub->GetID());
             return false;
+        }
 
-        if (m_game->GetSubBlockInPosition(m_position.x + sub->GetPositionX(), m_position.y + sub->GetPositionY()))
+        if (SubBlock* temp = m_game->GetSubBlockInPosition(m_position.x + sub->GetPositionX(), m_position.y + sub->GetPositionY() - 2.0f))
+        {
+            DEBUG_LOG("Block %d hits with block %d\n", sub->GetID(), temp->GetID());
             return false;
+        }
     }
 
     return true;
@@ -233,16 +252,19 @@ void Block::MoveBlock(bool right)
 {
     if (right)
     {
-        if (m_position.x + m_width + 1.0f > MAX_WIDTH)
-            return;
+        for (SubBlock* sub : m_subBlocks)
+
+            if (m_position.x + sub->GetPositionX() >= MAX_WIDTH - 1)
+                return;
 
         float posX = std::min<float>(MAX_WIDTH, m_position.x + 1.0f);
         m_position.x = posX;
     }
     else
     {
-        if (m_position.x + m_width - 1.0f < 0.0f)
-            return;
+        for (SubBlock* sub : m_subBlocks)
+            if (m_position.x + sub->GetPositionX() <= 0.0f)
+                return;
 
         float posX = std::max<float>(0.0f, m_position.x - 1.0f);
         m_position.x = posX;
@@ -267,8 +289,21 @@ uint8 Block::GetColorByType(uint8 type)
         color = COLOR_PINK;
         break;
     case TYPE_CUBE:
+        color = COLOR_ORANGE;
+        break;
     default:
         break;
     }
     return color;
+}
+
+void SubBlock::DebugPosition()
+{
+    DEBUG_LOG("Block %u, Position [%f, %f, %f]\n", ID, m_position.x, m_position.y, m_position.z);
+}
+
+void Block::DebugPosition()
+{
+    for (SubBlock* sub : m_subBlocks)
+        DEBUG_LOG("Block %u (ActiveBlock), Position [%f, %f, %f]\n", sub->GetID(), m_position.x + sub->GetPositionX(), m_position.y + sub->GetPositionY(), m_position.z + sub->GetPositionZ());
 }

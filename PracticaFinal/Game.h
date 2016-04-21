@@ -19,6 +19,8 @@ public:
     void StartGame();
     void Update();
     void EndGame();
+    void PauseGame();
+    void ResumeGame();
 
     void GenerateBlock(int32 type = -1);
 
@@ -32,6 +34,10 @@ public:
     void DropBlock();
     void HandleDropBlock();
     void ChangeBlock();
+    void DeleteSubBlock(SubBlock* subBlock);
+    void IncreaseBlockSpeed();
+
+    void DebugBlockPositions();
 
     void CheckLineCompleted();
     void CheckGameLost();
@@ -61,6 +67,7 @@ private:
     uint32 m_currentBlockId;
 
     uint64 m_nextMoveTime;
+    uint64 m_pausedTime;
 
     uint8 m_lastBlockType;
 };

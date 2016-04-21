@@ -3,10 +3,11 @@
 
 Game::Game()
 {
-    m_level           = 0;
-    m_points          = 0;
-    m_currentBlockId  = 0;
-    m_nextMoveTime    = 0;
+    m_level             = 0;
+    m_points            = 0;
+    m_currentBlockId    = 0;
+    m_nextMoveTime      = 0;
+    m_pausedTime        = 0;
     m_gameBlocks.clear();
 }
 
@@ -21,7 +22,7 @@ Game* Game::CreateNewGame(uint32 level /*=DEFAULT_LEVEL*/)
     if (!newGame)
     {
         DEBUG_LOG("Failed to create new game. Stopping...\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     DEBUG_LOG("Game succesfully created.\n");
@@ -43,11 +44,20 @@ void Game::Update()
 {
     if ((m_nextMoveTime - clock()) <= 0)
     {
+        //DebugBlockPositions();
         m_nextMoveTime = GetNextMoveTime();
         HandleDropBlock();
     }
+}
 
-    CheckLineCompleted();
+void Game::PauseGame()
+{
+    //m_pausedTime = clock();
+}
+
+void Game::ResumeGame()
+{
+    m_nextMoveTime = GetNextMoveTime();
 }
 
 void Game::GenerateBlock(int32 type /*=-1*/)
@@ -66,7 +76,7 @@ void Game::GenerateBlock(int32 type /*=-1*/)
     if (!block)
     {
         DEBUG_LOG("Failed to create block. Stopping...\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     m_activeBlock = block;
@@ -107,9 +117,12 @@ void Game::HandleDropBlock()
     {
         float posY = std::max(block->GetPositionY() - 1.0f, 0.0f);
         block->SetPositionY(posY);
+        CheckLineCompleted();
     }
     else
     {
+        CheckLineCompleted();
+        CheckGameLost();
         DestroyActiveBlock();
         GenerateBlock();
     }
@@ -142,6 +155,10 @@ void Game::DropBlock()
         return;
 
     m_activeBlock->Drop();
+    CheckLineCompleted();
+    CheckGameLost();
+    DestroyActiveBlock();
+    GenerateBlock();
 }
 
 void Game::CheckLineCompleted()
@@ -166,6 +183,7 @@ void Game::CheckLineCompleted()
     if (linesCompleted.empty())
         return;
 
+    DEBUG_LOG("Lines completed: ");
     for (uint8 i : linesCompleted)
     {
         for (uint8 x = 0; x < MAX_WIDTH; x++)
@@ -174,16 +192,35 @@ void Game::CheckLineCompleted()
             if (!sub)
             {
                 DEBUG_LOG("Incorrect line completed.\n");
-                return;
+                exit(EXIT_FAILURE);
             }
 
             sub->Delete();
         }
+        DEBUG_LOG("%u", i);
+    }
+    DEBUG_LOG("\n");
+
+    std::sort(m_gameBlocks.begin(), m_gameBlocks.end());
+    for (SubBlock* sub : m_gameBlocks)
+    {
+        sub->DebugPosition();
+        for (uint8 i = 0; i < linesCompleted.size(); i++)
+            if (sub->CanDropSubBlock())
+                sub->SetPositionY(sub->GetPositionY() - 1.0f);
     }
 }
 
 void Game::CheckGameLost()
 {
+    if (!m_activeBlock)
+    {
+        DEBUG_LOG("Active block not found. Stopping...");
+        exit(EXIT_FAILURE);
+    }
+
+    if (!m_activeBlock->CanDropBlock())
+        EndGame();
 }
 
 void Game::EndGame()
@@ -196,7 +233,7 @@ SubBlock* Game::GetSubBlockInPosition(float x, float y)
 
     std::vector<SubBlock*> subBlocks = GetSubBlockList();
     for (SubBlock* temp : subBlocks)
-        if (temp->GetPositionX() == x && temp->GetPositionY() + temp->GetHeight() == y)
+        if (temp->GetPositionX() == x && temp->GetPositionY() == y)
         {
             sub = temp;
             break;
@@ -209,4 +246,24 @@ void Game::ChangeBlock()
 {
     DestroyActiveBlock(false);
     GenerateBlock();
+}
+
+void Game::DebugBlockPositions()
+{
+    if (m_activeBlock)
+        m_activeBlock->DebugPosition();
+
+    for (SubBlock* sub : m_gameBlocks)
+    {
+        sub->DebugPosition();
+    }
+}
+
+void Game::DeleteSubBlock(SubBlock* subBlock)
+{
+    m_gameBlocks.erase(std::find(m_gameBlocks.begin(), m_gameBlocks.end(), subBlock));
+}
+
+void Game::IncreaseBlockSpeed()
+{
 }

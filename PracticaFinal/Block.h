@@ -18,7 +18,7 @@ enum Color
     
 enum BlockType
 {
-    TYPE_CUBE,
+    TYPE_CUBE = 1,
     TYPE_PRISM,
     TYPE_L,
     TYPE_T,
@@ -78,6 +78,23 @@ public:
     uint8 GetColor() const { return m_color; }
     void SetColor(uint8 color) { m_color = color; }
 
+    bool CanDropSubBlock();
+
+    void DebugPosition();
+
+    inline bool operator<(const SubBlock* other)
+    {
+        if (this->m_position.y < other->m_position.y)
+            return true;
+        else if (this->m_position.y > other->m_position.y)
+            return false;
+        else if (this->m_position.x < other->m_position.x)
+            return true;
+        else
+            return false;
+
+    }
+
 protected:
     uint32 ID;
 
@@ -109,12 +126,15 @@ public:
     void MoveBlock(bool right);
 
     bool CanDropBlock();
+    bool CanRotateBlock();
 
     static Position* GetPositionsOfType(uint8 type);
 
     std::vector<SubBlock*> GetSubBlocks() const { return m_subBlocks; }
 
     static uint8 GetColorByType(uint8 type);
+
+    void DebugPosition();
 
 private:
     uint8 m_type;

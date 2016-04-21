@@ -25,6 +25,8 @@ void funMouseWheel(int wheel, int direction, int x, int y);
 void drawFrame();
 void drawPanel();
 void drawBlocks();
+void drawPause();
+void drawPlane(GLfloat size);
 void drawBlock(Block* block);
 void drawSubBlock(SubBlock* sub);
 void drawBasicBlock(bool withBorder = true);
@@ -52,6 +54,8 @@ uint64 nextMoveTime = 0;
 Game* game = nullptr;
 
 bool stopped = false;
+
+bool selected = false;
 
 int main(int argc, char** argv) {
     
@@ -145,15 +149,17 @@ void initLights()
     glEnable(GL_LIGHT0);
 }
 
-GLuint textureName[1];
+const GLuint numTextures = 3;
+GLuint textureName[numTextures];
 
 void initTextures()
 {
     glEnable(GL_TEXTURE_2D);
-    glGenTextures(1, textureName);
+    glGenTextures(numTextures-1, textureName);
     
-    const char *filename[1] = { "textura.bmp"};
-    for(unsigned i = 0; i < 1; i++)
+    const char *filename[numTextures] = { "textura.bmp", "tetris.bmp", "texturaSelect.bmp" };
+
+    for(unsigned i = 0; i < numTextures; i++)
     {
         // Cargamos la textura
         glBindTexture(GL_TEXTURE_2D, textureName[i]);
@@ -189,6 +195,17 @@ void funKeyboardUp(unsigned char key, int x, int y)
 {
     switch (key)
     {
+    case 's':
+        selected = !selected;
+        break;
+    case 'r':
+        cameraPos[0] = 2.0f;
+        cameraPos[1] = 3.0f;
+        cameraPos[2] = 10.0f;
+        lookat[0] = 2.0f;
+        lookat[1] = 3.0f;
+        lookat[2] = -8.0f;
+        break;
     case 'c':
         game->ChangeBlock();
         break;
@@ -196,7 +213,12 @@ void funKeyboardUp(unsigned char key, int x, int y)
         game->RotateActiveBlock();
         break;
     case 13: // Enter
+    case 27: // ESC
         stopped = !stopped;
+        if (stopped)
+            game->PauseGame();
+        else
+            game->ResumeGame();
         break;
     default:
         break;
@@ -209,8 +231,11 @@ void funSpecial(int key, int x, int y)
 {
     switch (key)
     {
-    case GLUT_KEY_DOWN:
+    case GLUT_KEY_UP:
         game->DropBlock();
+        break;
+    case GLUT_KEY_DOWN:
+        game->IncreaseBlockSpeed();
         break;
     case GLUT_KEY_RIGHT:
         game->MoveBlock(true);
@@ -221,7 +246,6 @@ void funSpecial(int key, int x, int y)
     default:
         break;
     }
-
     DEBUG_LOG("KEYBOARD SPECIAL: key: %d, x: %d, y: %d \n", key, x, y);
 }
 
@@ -243,28 +267,34 @@ void funMouse(int key, int state, int x, int y)
 
 void funMotionPassive(int x, int y)
 {
-    oldX = x;
-    oldY = y;
+    /*oldX = x;
+    oldY = y;*/
     
     //DEBUG_LOG("PASSIVE: x: %d, y: %d \n", x, y);
 }
 
 void funMotion(int x, int y)
 {
-    cameraPos[0] -= float(oldX - x) / 100.0f;
-    lookat[0] = float(oldX - x) / 100.0f;
-    cameraPos[1] += float(oldY - y) / 100.0f;
-    lookat[1] = float(oldY - y) / 100.0f;
+    /*if (!stopped)
+    {
+        cameraPos[0] -= float(oldX - x) / 100.0f;
+        lookat[0] = float(oldX - x) / 100.0f;
+        cameraPos[1] += float(oldY - y) / 100.0f;
+        lookat[1] = float(oldY - y) / 100.0f;
 
-    oldX = x;
-    oldY = y;
+        oldX = x;
+        oldY = y;
+    }*/
 
     DEBUG_LOG("MOTION: x: %d, y: %d \n", x, y);
 }
 
+#define MAX_ZOOM 7.0f
+#define MIN_ZOOM 10.0f
+
 void funMouseWheel(int wheel, int direction, int x, int y)
 {
-    cameraPos[2] -= GLfloat(direction * 0.3);
+    cameraPos[2] = std::min<GLfloat>(MIN_ZOOM, std::max<GLfloat>(MAX_ZOOM, cameraPos[2] - direction * 0.3f));
     DEBUG_LOG("MOUSEWHEEL: wheel: %d, direction: %d, x: %d, y: %d, positionZ: %f \n", wheel, direction, x, y, cameraPos[2]);
 }
 
@@ -301,6 +331,10 @@ void drawFrame()
     glScaled(0.5f, 0.5f, 0.5f);
     drawPanel();
     drawBlocks();
+    glScaled(1.0f, 1.0f, 1.0f);
+
+    if (stopped)
+        drawPause();
     
     // Intercambiamos los buffers
     glutSwapBuffers();
@@ -332,6 +366,21 @@ void drawBlock(Block* block)
     std::vector<SubBlock*> subBlocks = block->GetSubBlocks();
 
     float correction[2] = {0.0f, 0.0f};
+    
+    glEnable(GL_TEXTURE_2D);
+    if (selected)
+    {
+        glBindTexture(GL_TEXTURE_2D, textureName[2]);
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    }
+    else
+    {
+        glBindTexture(GL_TEXTURE_2D, textureName[0]);
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+    }
+    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     switch(block->GetType())
     {
@@ -370,15 +419,22 @@ void drawBlock(Block* block)
         glPopMatrix();
     }
     glPopMatrix();
+    glDisable(GL_TEXTURE_2D);
 }
 
 void drawSubBlock(SubBlock* sub)
 {
     color = sub->GetColor();
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textureName[0]);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glPushMatrix();
     glTranslatef(sub->GetPositionX(), sub->GetPositionY(), sub->GetPositionZ());
     drawBasicBlock();
     glPopMatrix();
+    glDisable(GL_TEXTURE_2D);
 }
 
 void selectColor(uint8 color)
@@ -500,12 +556,50 @@ void drawCube(GLfloat size)
  
 }
 
+void drawPause()
+{
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textureName[1]);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glPushMatrix();
+    {
+        glTranslatef(5.0f, 8.0f, 3.0f);
+        glScalef(3.0f, 3.0f, 3.0f);
+        glBegin(GL_QUADS);
+	        glTexCoord2f(0.0f, 0.0f); glVertex3f(-2.5f, -1.0f,  1.0f);
+	        glTexCoord2f(1.0f, 0.0f); glVertex3f( 2.5f, -1.0f,  1.0f);
+	        glTexCoord2f(1.0f, 1.0f); glVertex3f( 2.5f,  1.0f,  1.0f);
+	        glTexCoord2f(0.0f, 1.0f); glVertex3f(-2.5f,  1.0f,  1.0f);
+        glEnd();
+    }
+    glPopMatrix();
+    glDisable(GL_TEXTURE_2D);
+}
+
+void drawPlane(GLfloat size)
+{
+    GLfloat dimension = size / 2.0f;
+    glBegin(GL_QUADS);
+	    glTexCoord2f(0.0f, 0.0f); glVertex3f(-dimension, -dimension,  dimension);
+	    glTexCoord2f(1.0f, 0.0f); glVertex3f( dimension, -dimension,  dimension);
+	    glTexCoord2f(1.0f, 1.0f); glVertex3f( dimension,  dimension,  dimension);
+	    glTexCoord2f(0.0f, 1.0f); glVertex3f(-dimension,  dimension,  dimension);
+    glEnd();
+}
+
 void drawBasicBlock(bool withBorder /*=true*/)
 {
     selectColor(color);
-
-    glBindTexture(GL_TEXTURE_2D, textureName[0]);
+    
+    glEnable(GL_TEXTURE_2D);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     drawCube(1.0f);
+
+    glDisable(GL_TEXTURE_2D);
     //glutSolidCube(1.0f);
 
 
@@ -521,6 +615,11 @@ void drawPanel()
 {
     uint8 oldColor = color;
     color = COLOR_GRAY;
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, textureName[0]);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glPushMatrix();
     {
         glTranslatef(0.0, -1.0, 0.0);
@@ -554,4 +653,5 @@ void drawPanel()
     }
     glPopMatrix();
     color = oldColor;
+    glDisable(GL_TEXTURE_2D);
 }
