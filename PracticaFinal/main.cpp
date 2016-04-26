@@ -346,6 +346,10 @@ void drawBlocks()
     if (game->GetActiveBlock())
         drawBlock(game->GetActiveBlock());
 
+    // Draw the next block
+    if (game->GetNextBlock())
+        drawBlock(game->GetNextBlock());
+
     // Draw other subBlocks
     for (SubBlock* sub : game->GetSubBlockList())
         drawSubBlock(sub);
@@ -649,6 +653,49 @@ void drawPanel()
         {
             drawBasicBlock();
             glTranslatef(0.0, 1.0, 0.0);
+        }
+    }
+    glPopMatrix();
+
+    glPushMatrix();
+    {
+        glTranslatef(DISPLAY_NEXT_BLOCK_X, DISPLAY_NEXT_BLOCK_Y, 0.0);
+        for (uint8 i = 0; i < DISPLAY_NEXT_BLOCK_HEIGHT; i++)
+        {
+            drawBasicBlock();
+            glTranslatef(0.0, 1.0, 0.0);
+        }
+    }
+    glPopMatrix();
+
+    glPushMatrix();
+    {
+        glTranslatef(DISPLAY_NEXT_BLOCK_X + DISPLAY_NEXT_BLOCK_WITDH, DISPLAY_NEXT_BLOCK_Y, 0.0);
+        for (uint8 i = 0; i < DISPLAY_NEXT_BLOCK_HEIGHT + 1; i++)
+        {
+            drawBasicBlock();
+            glTranslatef(0.0, 1.0, 0.0);
+        }
+    }
+    glPopMatrix();
+
+    glPushMatrix();
+    {
+        glTranslatef(DISPLAY_NEXT_BLOCK_X, DISPLAY_NEXT_BLOCK_Y, 0.0);
+        for (uint8 i = 0; i < DISPLAY_NEXT_BLOCK_WITDH; i++)
+        {
+            drawBasicBlock();
+            glTranslatef(1.0, 0.0, 0.0);
+        }
+    }
+    glPopMatrix();
+    glPushMatrix();
+    {
+        glTranslatef(DISPLAY_NEXT_BLOCK_X, DISPLAY_NEXT_BLOCK_Y + DISPLAY_NEXT_BLOCK_HEIGHT, 0.0);
+        for (uint8 i = 0; i < DISPLAY_NEXT_BLOCK_WITDH; i++)
+        {
+            drawBasicBlock();
+            glTranslatef(1.0, 0.0, 0.0);
         }
     }
     glPopMatrix();

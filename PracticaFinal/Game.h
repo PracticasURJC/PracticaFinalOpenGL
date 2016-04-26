@@ -22,7 +22,7 @@ public:
     void PauseGame();
     void ResumeGame();
 
-    void GenerateBlock(int32 type = -1);
+    Block* GenerateBlock(bool active, int32 type = -1);
 
     void DestroyActiveBlock(bool withSave = true);
 
@@ -59,8 +59,16 @@ public:
     Block* GetActiveBlock() { return m_activeBlock; }
     const Block* GetActiveBlock() const { return m_activeBlock; }
 
+    void SetActiveBlock(Block* block) { m_activeBlock = block; }
+    
+    Block* GetNextBlock() { return m_nextBlock; }
+    const Block* GetNextBlock() const { return m_nextBlock; }
+
+    void SetNextBlock(Block* block) { m_nextBlock = block; }
+
 private:
     Block* m_activeBlock;
+    Block* m_nextBlock;
     std::vector<SubBlock*> m_gameBlocks;
     uint32 m_points;
     uint32 m_level;

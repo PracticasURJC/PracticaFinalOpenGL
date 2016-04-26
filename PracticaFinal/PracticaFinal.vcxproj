@@ -87,11 +87,17 @@
     <ClCompile Include="Block.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="RgbImage.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Block.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Game.h" />
+    <ClInclude Include="RgbImage.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="tetris.bmp" />
+    <Image Include="textura.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

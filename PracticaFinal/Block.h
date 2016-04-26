@@ -28,11 +28,11 @@ enum BlockType
 
 struct Position
 {
-    Position() { x = 0; y = 0; z = 0; rotation = 0; }
-    Position(float _x, float _y) { x = _x; y = _y; z = 0.0f; rotation = 0.0f; }
-    Position(float _x, float _y, float _z, float _rotation = 0) { x = _x; y = _y; z = _z; rotation = _rotation; }
+    Position() { x = 0.0f; y = 0.0f; z = 0.0f; }
+    Position(float _x, float _y) { x = _x; y = _y; z = 0.0f; }
+    Position(float _x, float _y, float _z) { x = _x; y = _y; z = _z; }
 
-    float x, y, z, rotation;
+    float x, y, z;
 
     inline bool operator==(const Position &other) { return x == other.x && y == other.y && z == other.z; }
 };
@@ -51,26 +51,17 @@ public:
 
     uint32 GetID() const { return ID; }
 
-    uint8 GetHeight() const { return m_height; }
-    void SetHeight(uint8 height) { m_height = height; }
-
-    uint8 GetWidth() const { return m_width; }
-    void SetWidth(uint8 width) { m_width = width;}
-
     Position GetPosition() const { return m_position; }
     void SetPosition(Position _position) { m_position = _position; }
 
     float GetPositionX() const { return m_position.x; }
-    void SetPositionX(float _x) { m_position.x = _x; }
+    void SetPositionX(float x) { m_position.x = x; }
 
     float GetPositionY() const { return m_position.y; }
-    void SetPositionY(float _y) { m_position.y = _y;}
+    void SetPositionY(float y) { m_position.y = y;}
     
     float GetPositionZ() const { return m_position.z; }
-    void SetPositionZ(float _z) { m_position.z = _z; }
-
-    float GetRotation() const { return m_position.rotation; }
-    void SetRotation(float _rotation) { m_position.rotation = _rotation; }
+    void SetPositionZ(float z) { m_position.z = z; }
 
     Game* GetGame() const { return m_game; }
     void SetGame(Game* game) { m_game = game; }
@@ -96,16 +87,11 @@ public:
     }
 
 protected:
+    uint8 m_color;
     uint32 ID;
 
-    uint8 m_height;
-    uint8 m_width;
-
     Position m_position;
-
     Game* m_game;
-
-    uint8 m_color;
 };
 
 #define NUM_BLOCK_SUBBLOCKS 4
@@ -120,13 +106,13 @@ public:
     void SetType(uint8 type) { m_type = type; }
 
     void GenerateSubBlocks();
-    void CalculateDimensions();
     void RotateBlock();
     void Drop();
     void MoveBlock(bool right);
 
     bool CanDropBlock();
     bool CanRotateBlock();
+    bool CanMoveBlock(bool right);
 
     static Position* GetPositionsOfType(uint8 type);
 

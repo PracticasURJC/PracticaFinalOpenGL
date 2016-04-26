@@ -6,9 +6,15 @@
 
 #define _USE_MATH_DEFINES
 
-#define MAX_HEIGHT      15
-#define MAX_WIDTH       10
-#define CENTER          4
+#define MAX_HEIGHT      15.0f
+#define MAX_WIDTH       10.0f
+#define CENTER          4.0f
+#define NEXT_BLOCK_X    15.0f
+#define NEXT_BLOCK_Y    8.0f
+#define DISPLAY_NEXT_BLOCK_X 12.0f
+#define DISPLAY_NEXT_BLOCK_Y 5.0f
+#define DISPLAY_NEXT_BLOCK_HEIGHT 8.0f
+#define DISPLAY_NEXT_BLOCK_WITDH 9.0f
 
 #define WITH_DEBUG
 

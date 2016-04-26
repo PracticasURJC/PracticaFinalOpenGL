@@ -37,12 +37,13 @@ Game* Game::CreateNewGame(uint32 level /*=DEFAULT_LEVEL*/)
 
 void Game::StartGame()
 {
-    GenerateBlock();
+    GenerateBlock(true);
+    GenerateBlock(false);
 }
 
 void Game::Update()
 {
-    if ((m_nextMoveTime - clock()) <= 0)
+    if (int64(m_nextMoveTime - clock()) <= 0)
     {
         //DebugBlockPositions();
         m_nextMoveTime = GetNextMoveTime();
@@ -60,7 +61,7 @@ void Game::ResumeGame()
     m_nextMoveTime = GetNextMoveTime();
 }
 
-void Game::GenerateBlock(int32 type /*=-1*/)
+Block* Game::GenerateBlock(bool active, int32 type /*=-1*/)
 {
     if (type < 0)
     {
@@ -72,17 +73,30 @@ void Game::GenerateBlock(int32 type /*=-1*/)
         while (type == m_lastBlockType);
     }
 
-    Block* block = new Block(type, this, CENTER, MAX_HEIGHT);
+    float pos[2][2] = { { CENTER, MAX_HEIGHT}, { NEXT_BLOCK_X, NEXT_BLOCK_Y} }; 
+
+    Block* block = new Block(type, this, pos[!active][0], pos[!active][1]);
     if (!block)
     {
         DEBUG_LOG("Failed to create block. Stopping...\n");
         exit(EXIT_FAILURE);
     }
 
-    m_activeBlock = block;
     m_lastBlockType = block->GetType();
+    if (!active)
+    {
+        if (m_activeBlock)
+        {
+            m_activeBlock->SetPositionX(CENTER);
+            m_activeBlock->SetPositionY(MAX_HEIGHT);
+        }
+        m_nextBlock = block;
+    }
+    else
+        m_activeBlock = block;
 
     DEBUG_LOG("Block type: %d succesfully created.\n", type);
+    return block;
 }
 
 void Game::DestroyActiveBlock(bool withSave /*=true*/)
@@ -100,11 +114,14 @@ void Game::DestroyActiveBlock(bool withSave /*=true*/)
             sub->SetPositionX(sub->GetPositionX() + m_activeBlock->GetPositionX());
             sub->SetPositionY(sub->GetPositionY() + m_activeBlock->GetPositionY());
             m_gameBlocks.push_back(sub);
+            sub->DebugPosition();
         }
-    }
 
-    delete m_activeBlock;
-    m_activeBlock = nullptr;
+        m_activeBlock = m_nextBlock;
+        GenerateBlock(false);
+    }
+    else
+        GenerateBlock(true);
 }
 
 void Game::HandleDropBlock()
@@ -121,10 +138,9 @@ void Game::HandleDropBlock()
     }
     else
     {
+        DestroyActiveBlock();
         CheckLineCompleted();
         CheckGameLost();
-        DestroyActiveBlock();
-        GenerateBlock();
     }
 }
 
@@ -155,28 +171,35 @@ void Game::DropBlock()
         return;
 
     m_activeBlock->Drop();
+    DestroyActiveBlock();
     CheckLineCompleted();
     CheckGameLost();
-    DestroyActiveBlock();
-    GenerateBlock();
 }
 
 void Game::CheckLineCompleted()
 {
-    std::vector<uint8> linesCompleted;
-    for (uint8 y = 0; y < MAX_HEIGHT; y++)
+    std::vector<float> linesCompleted;
+    for (float y = 0.0f; y < MAX_HEIGHT; y += 1.0f)
     {
         uint8 i = 0;
-        for (uint8 x = 0; x < MAX_WIDTH; x++)
+        for (float x = 0.0f; x < MAX_WIDTH; x += 1.0f)
         {
-            if (!GetSubBlockInPosition(x, y))
+            if (SubBlock* sub = GetSubBlockInPosition(x, y))
+            {
+                DEBUG_LOG("CheckLine: Cube %u in Position X:%f, Y: %f\n", sub->GetID(), x, y);
+            }
+            else
+            {
+                DEBUG_LOG("CheckLine: Empty Position X:%f, Y: %f\n", x, y);
                 break;
+            }
 
             i++;
         }
+        DEBUG_LOG("CheckLine: Coincidences: %u\n", i);
 
         // Insert line completed if all X positions are filled with subblocks
-        if (i == MAX_WIDTH)
+        if (i >= MAX_WIDTH)
             linesCompleted.push_back(y);
     }
 
@@ -184,9 +207,9 @@ void Game::CheckLineCompleted()
         return;
 
     DEBUG_LOG("Lines completed: ");
-    for (uint8 i : linesCompleted)
+    for (float i : linesCompleted)
     {
-        for (uint8 x = 0; x < MAX_WIDTH; x++)
+        for (float x = 0.0f; x < MAX_WIDTH; x += 1.0f)
         {
             SubBlock* sub = GetSubBlockInPosition(x, i);
             if (!sub)
@@ -202,10 +225,11 @@ void Game::CheckLineCompleted()
     DEBUG_LOG("\n");
 
     std::sort(m_gameBlocks.begin(), m_gameBlocks.end());
-    for (SubBlock* sub : m_gameBlocks)
+
+    for (SubBlock* &sub : m_gameBlocks)
     {
         sub->DebugPosition();
-        for (uint8 i = 0; i < linesCompleted.size(); i++)
+        for (float i = 0.0f; i < linesCompleted.size(); i++)
             if (sub->CanDropSubBlock())
                 sub->SetPositionY(sub->GetPositionY() - 1.0f);
     }
@@ -232,12 +256,15 @@ SubBlock* Game::GetSubBlockInPosition(float x, float y)
     SubBlock* sub = nullptr;
 
     std::vector<SubBlock*> subBlocks = GetSubBlockList();
-    for (SubBlock* temp : subBlocks)
+    for (auto itr = subBlocks.begin(); itr != subBlocks.end(); itr++)
+    {
+        SubBlock* temp = *(itr);
         if (temp->GetPositionX() == x && temp->GetPositionY() == y)
         {
             sub = temp;
             break;
         }
+    }
 
     return sub;
 }
@@ -245,7 +272,6 @@ SubBlock* Game::GetSubBlockInPosition(float x, float y)
 void Game::ChangeBlock()
 {
     DestroyActiveBlock(false);
-    GenerateBlock();
 }
 
 void Game::DebugBlockPositions()
