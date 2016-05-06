@@ -34,6 +34,8 @@ void initLights();
 void initTextures();
 void selectColor(uint8 color);
 void generateRandomBlock();
+void renderText(float x, float y, void *font, const unsigned char* string);
+void drawPoints();
 
 GLfloat cameraPos[3]            = { 2.0, 3.0, 10.0 };
 GLfloat lookat[3]               = { 2.0, 3.0, -8.0 };
@@ -56,6 +58,8 @@ Game* game = nullptr;
 bool stopped = false;
 
 bool selected = false;
+
+bool soundPaused = true;
 
 int main(int argc, char** argv) {
     
@@ -87,8 +91,10 @@ int main(int argc, char** argv) {
     game = Game::CreateNewGame();
     if (!game)
         return(1);
-
+    
+    PlaySoundTetris(TEXT("../src/main.wav"), nullptr, SND_LOOP | SND_ASYNC);
     game->StartGame();
+
 
     // Bucle principal
     glutMainLoop();
@@ -135,18 +141,35 @@ void initLights()
     glShadeModel(GL_SMOOTH);
     glEnable(GL_NORMALIZE);
 
-    GLfloat Ia0[] = { 0.5, 0.5, 0.5, 1.0 };
-    GLfloat Id0[] = { 1.0, 1.0, 1.0, 1.0 };
-    GLfloat Is0[] = { 1.0, 1.0, 1.0, 1.0 };
-    GLfloat point[] = { 4.0, 4.0, 0.0, 1.0};
-    glLightfv(GL_LIGHT0, GL_AMBIENT , Ia0);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE , Id0);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, Is0);
-	glLightfv(GL_LIGHT0, GL_POSITION, point);
-    glLightf (GL_LIGHT0, GL_CONSTANT_ATTENUATION , 0.50f);
-    glLightf (GL_LIGHT0, GL_LINEAR_ATTENUATION   , 0.01f);
-    glLightf (GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.01f);
-    glEnable(GL_LIGHT0);
+    {
+        GLfloat Ia0[] = { 0.5, 0.5, 0.5, 1.0 };
+        GLfloat Id0[] = { 1.0, 1.0, 1.0, 1.0 };
+        GLfloat Is0[] = { 1.0, 1.0, 1.0, 1.0 };
+        GLfloat point[] = { 4.0, 4.0, 5.0, 1.0};
+        glLightfv(GL_LIGHT0, GL_AMBIENT , Ia0);
+        glLightfv(GL_LIGHT0, GL_DIFFUSE , Id0);
+        glLightfv(GL_LIGHT0, GL_SPECULAR, Is0);
+	    glLightfv(GL_LIGHT0, GL_POSITION, point);
+        glLightf (GL_LIGHT0, GL_CONSTANT_ATTENUATION , 0.50f);
+        glLightf (GL_LIGHT0, GL_LINEAR_ATTENUATION   , 0.01f);
+        glLightf (GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.01f);
+        glEnable(GL_LIGHT0);
+    }
+
+    {
+        GLfloat Ia0[] = { 0.5, 0.5, 0.5, 1.0 };
+        GLfloat Id0[] = { 1.0, 1.0, 1.0, 1.0 };
+        GLfloat Is0[] = { 1.0, 1.0, 1.0, 1.0 };
+        GLfloat point[] = { -4.0, 4.0, 5.0, 1.0};
+        glLightfv(GL_LIGHT1, GL_AMBIENT , Ia0);
+        glLightfv(GL_LIGHT1, GL_DIFFUSE , Id0);
+        glLightfv(GL_LIGHT1, GL_SPECULAR, Is0);
+	    glLightfv(GL_LIGHT1, GL_POSITION, point);
+        glLightf (GL_LIGHT1, GL_CONSTANT_ATTENUATION , 0.50f);
+        glLightf (GL_LIGHT1, GL_LINEAR_ATTENUATION   , 0.01f);
+        glLightf (GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.01f);
+        glEnable(GL_LIGHT1);
+    }
 }
 
 const GLuint numTextures = 3;
@@ -157,7 +180,7 @@ void initTextures()
     glEnable(GL_TEXTURE_2D);
     glGenTextures(numTextures-1, textureName);
     
-    const char *filename[numTextures] = { "textura.bmp", "tetris.bmp", "texturaSelect.bmp" };
+    const char *filename[numTextures] = { "../src/textura.bmp", "../src/tetris.bmp", "../src/texturaSelect.bmp" };
 
     for(unsigned i = 0; i < numTextures; i++)
     {
@@ -195,6 +218,13 @@ void funKeyboardUp(unsigned char key, int x, int y)
 {
     switch (key)
     {
+    case 'm':
+        soundPaused = !soundPaused;
+        if (!soundPaused)
+            PlaySoundTetris(nullptr, nullptr, 0);
+        else
+            PlaySoundTetris(TEXT("../src/main.wav"), nullptr, SND_LOOP | SND_ASYNC);
+        break;
     case 's':
         selected = !selected;
         break;
@@ -256,8 +286,8 @@ void funMouse(int key, int state, int x, int y)
 
     if (state == GLUT_UP)
     {   
-        //if ((glutGet(GLUT_ELAPSED_TIME) - lastClickTime) < DOUBLE_CLICK_TIME)
-        //    doubleClick();
+        if ((glutGet(GLUT_ELAPSED_TIME) - lastClickTime) < DOUBLE_CLICK_TIME)
+            stopped = !stopped;
 
         lastClickTime = glutGet(GLUT_ELAPSED_TIME);
     }
@@ -275,16 +305,14 @@ void funMotionPassive(int x, int y)
 
 void funMotion(int x, int y)
 {
-    /*if (!stopped)
+    if (!stopped)
     {
-        cameraPos[0] -= float(oldX - x) / 100.0f;
-        lookat[0] = float(oldX - x) / 100.0f;
-        cameraPos[1] += float(oldY - y) / 100.0f;
-        lookat[1] = float(oldY - y) / 100.0f;
+        cameraPos[0] -= float(oldX - x) / 300.0f;
+        cameraPos[1] += float(oldY - y) / 300.0f;
 
         oldX = x;
         oldY = y;
-    }*/
+    }
 
     DEBUG_LOG("MOTION: x: %d, y: %d \n", x, y);
 }
@@ -321,8 +349,6 @@ void drawFrame()
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    //drawInterface();
-
     // Posicionamos la cámara (V)
     gluLookAt(cameraPos[0], cameraPos[1], cameraPos[2],
                  lookat[0],    lookat[1],    lookat[2],
@@ -335,6 +361,10 @@ void drawFrame()
 
     if (stopped)
         drawPause();
+
+    drawPoints();
+
+    //DEBUG_LOG("points = %u : %s", game->GetPoints(), std::to_string(game->GetPoints()));
     
     // Intercambiamos los buffers
     glutSwapBuffers();
@@ -386,41 +416,24 @@ void drawBlock(Block* block)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    switch(block->GetType())
-    {
-    case TYPE_CUBE:
-        correction[0] = 1.0f;
-        correction[1] = 1.0f;
-        break;
-    case TYPE_PRISM:
-        correction[0] = 2.0f;
-        break;
-    case TYPE_T:
-    case TYPE_Z:
-    case TYPE_L:
-        correction[0] = 1.0f;
-        break;
-    default:
-        break;
-    }
-
     glPushMatrix();
-    
-    glTranslatef(block->GetPositionX() + correction[0], block->GetPositionY() + correction[1], block->GetPositionZ());
-
-    // Cube should not rotate
-    //if (block->GetType() != TYPE_CUBE)
-    //    glRotatef(block->GetRotation(), 0.0f, 0.0f, 1.0f);
-
-    if (correction[0] != 0.0f || correction[1] != 0.0f)
-        glTranslatef(-correction[0], -correction[1], 0.0f);
-
-    for (SubBlock* sub : subBlocks)
     {
-        glPushMatrix();
-        glTranslatef(sub->GetPositionX(), sub->GetPositionY(), sub->GetPositionZ());
-        drawBasicBlock();
-        glPopMatrix();
+        glTranslatef(block->GetPositionX() + correction[0], block->GetPositionY() + correction[1], block->GetPositionZ());
+
+        // Cube should not rotate
+        //if (block->GetType() != TYPE_CUBE)
+        //    glRotatef(block->GetRotation(), 0.0f, 0.0f, 1.0f);
+
+        if (correction[0] != 0.0f || correction[1] != 0.0f)
+            glTranslatef(-correction[0], -correction[1], 0.0f);
+
+        for (SubBlock* sub : subBlocks)
+        {
+            glPushMatrix();
+            glTranslatef(sub->GetPositionX(), sub->GetPositionY(), sub->GetPositionZ());
+            drawBasicBlock();
+            glPopMatrix();
+        }
     }
     glPopMatrix();
     glDisable(GL_TEXTURE_2D);
@@ -447,7 +460,7 @@ void selectColor(uint8 color)
     {
     case COLOR_WHITE:
     {
-        GLfloat Kad[] = {1.0, 0.0, 0.0, 1.0};
+        GLfloat Kad[] = {1.0, 1.0, 1.0, 1.0};
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, Kad);
         glColor3f(1.0, 1.0, 1.0);
         break;
@@ -461,23 +474,23 @@ void selectColor(uint8 color)
     }
     case COLOR_RED:
     {
-        GLfloat Kad[] = {1.0, 0.0, 0.0, 1.0};
+        GLfloat Kad[] = {0.863f, 0.078f, 0.235f, 1.0};
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, Kad);
-        glColor3f(1.0, 0.0, 0.0);
+        glColor3f(0.863f, 0.078f, 0.235f);
         break;
     }
     case COLOR_BLUE:
     {
-        GLfloat Kad[] = {0.0, 0.0, 1.0, 1.0};
+        GLfloat Kad[] = {0.118f, 0.565f, 1.000f, 1.0};
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, Kad);
-        glColor3f(0.0, 0.0, 1.0);
+        glColor3f(0.118f, 0.565f, 1.000f);
         break;
     }
     case COLOR_GREEN:
     {
-        GLfloat Kad[] = {0.0, 1.0, 0.0, 1.0};
+        GLfloat Kad[] = {0.235f, 0.702f, 0.443f, 1.0};
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, Kad);
-        glColor3f(0.0, 1.0, 0.0);
+        glColor3f(0.235f, 0.702f, 0.443f);
         break;
     }
     case COLOR_YELLOW:
@@ -503,9 +516,16 @@ void selectColor(uint8 color)
     }
     case COLOR_GRAY:
     {
-        GLfloat Kad[] = {0.753f, 0.753f, 0.753f, 1.0};
+        GLfloat Kad[] = {0.653f, 0.653f, 0.653f, 1.0};
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, Kad);
         glColor3f(0.753f, 0.753f, 0.753f);
+        break;
+    }
+    case COLOR_CYAN:
+    {
+        GLfloat Kad[] = {0.902f, 0.902f, 0.980f, 1.0};
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, Kad);
+        glColor3f(0.902f, 0.902f, 0.980f);
         break;
     }
     default:
@@ -569,8 +589,8 @@ void drawPause()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glPushMatrix();
     {
-        glTranslatef(5.0f, 8.0f, 3.0f);
-        glScalef(3.0f, 3.0f, 3.0f);
+        glTranslatef(4.0f, 6.0f, 10.0f);
+        glScalef(4.0f, 4.0f, 4.0f);
         glBegin(GL_QUADS);
 	        glTexCoord2f(0.0f, 0.0f); glVertex3f(-2.5f, -1.0f,  1.0f);
 	        glTexCoord2f(1.0f, 0.0f); glVertex3f( 2.5f, -1.0f,  1.0f);
@@ -701,4 +721,18 @@ void drawPanel()
     glPopMatrix();
     color = oldColor;
     glDisable(GL_TEXTURE_2D);
+}
+
+void renderText(float x, float y, void *font, const unsigned char* string)
+{
+    glRasterPos3f(x, y, 0.0f);
+    glutBitmapString(font, string);
+}
+
+void drawPoints()
+{
+    unsigned char points[BUFFER_SIZE];
+    std::string pointsString = "· Puntuacion: " + std::to_string(game->GetPoints()) + "\n· Nivel: " + std::to_string(game->GetLevel());
+    strcpy_s((char*)points, BUFFER_SIZE, pointsString.c_str());
+    renderText(POINTS_X, POINTS_Y, GLUT_BITMAP_9_BY_15, points);
 }

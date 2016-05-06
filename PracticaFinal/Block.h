@@ -11,6 +11,7 @@ enum Color
     COLOR_BLUE,
     COLOR_GREEN,
     COLOR_YELLOW,
+    COLOR_CYAN,
     COLOR_PINK,
     COLOR_ORANGE,
     COLOR_GRAY
@@ -21,9 +22,11 @@ enum BlockType
     TYPE_CUBE = 1,
     TYPE_PRISM,
     TYPE_L,
+    TYPE_L_INV,
     TYPE_T,
     TYPE_Z,
-    MAX_BLOCK_TYPE = TYPE_Z
+    TYPE_Z_INV,
+    MAX_BLOCK_TYPE = TYPE_Z_INV
 };
 
 struct Position
@@ -83,7 +86,6 @@ public:
             return true;
         else
             return false;
-
     }
 
 protected:
@@ -93,8 +95,6 @@ protected:
     Position m_position;
     Game* m_game;
 };
-
-#define NUM_BLOCK_SUBBLOCKS 4
 
 class Block : public SubBlock
 {

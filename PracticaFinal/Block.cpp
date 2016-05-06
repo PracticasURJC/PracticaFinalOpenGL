@@ -86,8 +86,8 @@ bool Block::CanRotateBlock()
     {
         float oldPosX = sub->GetPositionX();
         float oldPosY = sub->GetPositionY();
-        float newPosX = oldPosX * cosf(float(M_PI_2)) - oldPosY * sinf(float(M_PI_2));
-        float newPosY = oldPosX * sinf(float(M_PI_2)) + oldPosY * cosf(float(M_PI_2));
+        float newPosX = roundf(oldPosX * cosf(float(M_PI_2)) - oldPosY * sinf(float(M_PI_2)));
+        float newPosY = roundf(oldPosX * sinf(float(M_PI_2)) + oldPosY * cosf(float(M_PI_2)));
 
         if (m_position.x + newPosX < 0.0f || m_position.x + newPosX > MAX_WIDTH - 1.0f)
             return false;
@@ -111,8 +111,8 @@ void Block::RotateBlock()
     {
         float oldPosX = sub->GetPositionX();
         float oldPosY = sub->GetPositionY();
-        float newPosX = oldPosX * cos(M_PI_2) - oldPosY * sin(M_PI_2);
-        float newPosY = oldPosX * sin(M_PI_2) + oldPosY * cos(M_PI_2);
+        float newPosX = roundf(oldPosX * cos(float(M_PI_2)) - oldPosY * sin(float(M_PI_2)));
+        float newPosY = roundf(oldPosX * sin(float(M_PI_2)) + oldPosY * cos(float(M_PI_2)));
 
         sub->SetPositionX(newPosX);
         sub->SetPositionY(newPosY);
@@ -155,6 +155,18 @@ Position* Block::GetPositionsOfType(uint8 type)
             positions[1] = {1.0f, 0.0f};
             positions[2] = {2.0f, 0.0f};
             positions[3] = {2.0f, 1.0f};
+            break;
+        case TYPE_Z_INV:
+            positions[0] = {0.0f, 1.0f};
+            positions[1] = {1.0f, 1.0f};
+            positions[2] = {1.0f, 0.0f};
+            positions[3] = {2.0f, 0.0f};
+            break;
+        case TYPE_L_INV:
+            positions[0] = {0.0f, 0.0f};
+            positions[1] = {0.0f, 1.0f};
+            positions[2] = {1.0f, 0.0f};
+            positions[3] = {2.0f, 0.0f};
             break;
         default:
             break;
@@ -204,7 +216,7 @@ bool Block::CanDropBlock()
             return false;
         }
 
-        if (SubBlock* temp = m_game->GetSubBlockInPosition(m_position.x + sub->GetPositionX(), m_position.y + sub->GetPositionY() - 2.0f))
+        if (SubBlock* temp = m_game->GetSubBlockInPosition(m_position.x + sub->GetPositionX(), m_position.y + sub->GetPositionY() - 1.0f))
         {
             DEBUG_LOG("Block %d hits with block %d\n", sub->GetID(), temp->GetID());
             return false;
@@ -258,7 +270,7 @@ uint8 Block::GetColorByType(uint8 type)
     switch (type)
     {
     case TYPE_PRISM:
-        color = COLOR_GREEN;
+        color = COLOR_CYAN;
         break;
     case TYPE_Z:
         color = COLOR_RED;
@@ -270,6 +282,12 @@ uint8 Block::GetColorByType(uint8 type)
         color = COLOR_PINK;
         break;
     case TYPE_CUBE:
+        color = COLOR_YELLOW;
+        break;
+    case TYPE_Z_INV:
+        color = COLOR_GREEN;
+        break;
+    case TYPE_L_INV:
         color = COLOR_ORANGE;
         break;
     default:

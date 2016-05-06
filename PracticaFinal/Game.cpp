@@ -1,5 +1,4 @@
 #include "Game.h"
-#include <iterator>
 
 Game::Game()
 {
@@ -8,6 +7,7 @@ Game::Game()
     m_currentBlockId    = 0;
     m_nextMoveTime      = 0;
     m_pausedTime        = 0;
+    m_linesCompleted    = 0;
     m_gameBlocks.clear();
 }
 
@@ -126,14 +126,13 @@ void Game::DestroyActiveBlock(bool withSave /*=true*/)
 
 void Game::HandleDropBlock()
 {
-    Block* block = GetActiveBlock();
-    if (!block)
+    if (!m_activeBlock)
         return;
 
-    if (block->CanDropBlock())
+    if (m_activeBlock->CanDropBlock())
     {
-        float posY = std::max(block->GetPositionY() - 1.0f, 0.0f);
-        block->SetPositionY(posY);
+        float posY = std::max(m_activeBlock->GetPositionY() - 1.0f, 0.0f);
+        m_activeBlock->SetPositionY(posY);
         CheckLineCompleted();
     }
     else
@@ -154,7 +153,7 @@ void Game::RotateActiveBlock()
 
 uint64 Game::GetNextMoveTime()
 {
-    return uint64(clock() + float(DEFAULT_MILLISECONDS) * float(1.0f / m_level));
+    return uint64(clock() + float(DEFAULT_MILLISECONDS) + (float(m_level / (m_level + 1)) * 700.0f));
 }
 
 void Game::MoveBlock(bool right)
@@ -184,15 +183,8 @@ void Game::CheckLineCompleted()
         uint8 i = 0;
         for (float x = 0.0f; x < MAX_WIDTH; x += 1.0f)
         {
-            if (SubBlock* sub = GetSubBlockInPosition(x, y))
-            {
-                DEBUG_LOG("CheckLine: Cube %u in Position X:%f, Y: %f\n", sub->GetID(), x, y);
-            }
-            else
-            {
-                DEBUG_LOG("CheckLine: Empty Position X:%f, Y: %f\n", x, y);
+            if (!GetSubBlockInPosition(x, y))
                 break;
-            }
 
             i++;
         }
@@ -224,13 +216,17 @@ void Game::CheckLineCompleted()
     }
     DEBUG_LOG("\n");
 
+    m_linesCompleted += linesCompleted.size();
+    m_level = (m_linesCompleted / LINE_PER_DIFF) + 1;
+    m_points = m_linesCompleted * 100;
+
     std::sort(m_gameBlocks.begin(), m_gameBlocks.end());
 
-    for (SubBlock* &sub : m_gameBlocks)
+    for (SubBlock* sub : m_gameBlocks)
     {
-        sub->DebugPosition();
-        for (float i = 0.0f; i < linesCompleted.size(); i++)
-            if (sub->CanDropSubBlock())
+        //sub->DebugPosition();
+        for (uint32 i = 0; i < linesCompleted.size(); i++)
+            if (sub->GetPositionY() >= linesCompleted[i])
                 sub->SetPositionY(sub->GetPositionY() - 1.0f);
     }
 }
@@ -243,12 +239,13 @@ void Game::CheckGameLost()
         exit(EXIT_FAILURE);
     }
 
-    if (!m_activeBlock->CanDropBlock())
+    if (GetSubBlockInPosition(CENTER, MAX_HEIGHT - 1.0f))
         EndGame();
 }
 
 void Game::EndGame()
 {
+    DEBUG_LOG("END");
 }
 
 SubBlock* Game::GetSubBlockInPosition(float x, float y)

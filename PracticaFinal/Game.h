@@ -72,6 +72,7 @@ private:
     std::vector<SubBlock*> m_gameBlocks;
     uint32 m_points;
     uint32 m_level;
+    uint32 m_linesCompleted;
     uint32 m_currentBlockId;
 
     uint64 m_nextMoveTime;
