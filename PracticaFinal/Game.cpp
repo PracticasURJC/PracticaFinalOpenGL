@@ -158,7 +158,7 @@ uint64 Game::GetNextMoveTime()
 
 float Game::GetSpeed() const
 {
-    return float(-(std::logf(m_level) / std::logf(20.0f)) + 2.0f);
+    return -1.0f * float(std::logf(float(m_level)) / std::logf(20.0f)) + 2.0f;
 }
 
 void Game::MoveBlock(bool right)
