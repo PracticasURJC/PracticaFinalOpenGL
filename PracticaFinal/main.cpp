@@ -57,8 +57,6 @@ Game* game = nullptr;
 
 bool stopped = false;
 
-bool selected = false;
-
 bool soundPaused = true;
 
 int main(int argc, char** argv) {
@@ -172,7 +170,7 @@ void initLights()
     }
 }
 
-const GLuint numTextures = 3;
+const GLuint numTextures = 2;
 GLuint textureName[numTextures];
 
 void initTextures()
@@ -180,7 +178,7 @@ void initTextures()
     glEnable(GL_TEXTURE_2D);
     glGenTextures(numTextures-1, textureName);
     
-    const char *filename[numTextures] = { "../src/textura.bmp", "../src/tetris.bmp", "../src/texturaSelect.bmp" };
+    const char *filename[numTextures] = { "../src/textura.bmp", "../src/tetris.bmp" };
 
     for(unsigned i = 0; i < numTextures; i++)
     {
@@ -224,9 +222,6 @@ void funKeyboardUp(unsigned char key, int x, int y)
             PlaySoundTetris(nullptr, nullptr, 0);
         else
             PlaySoundTetris(TEXT("../src/main.wav"), nullptr, SND_LOOP | SND_ASYNC);
-        break;
-    case 's':
-        selected = !selected;
         break;
     case 'r':
         cameraPos[0] = 2.0f;
@@ -408,16 +403,8 @@ void drawBlock(Block* block)
     float correction[2] = {0.0f, 0.0f};
     
     glEnable(GL_TEXTURE_2D);
-    if (selected)
-    {
-        glBindTexture(GL_TEXTURE_2D, textureName[2]);
-        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-    }
-    else
-    {
-        glBindTexture(GL_TEXTURE_2D, textureName[0]);
-        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
-    }
+    glBindTexture(GL_TEXTURE_2D, textureName[0]);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
