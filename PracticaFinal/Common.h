@@ -32,7 +32,7 @@
 #define POINTS_Y                    8.0f
 
 #define BYTE_SIZE                   8
-#define BUFFER_SIZE                 BYTE_SIZE * 4
+#define BUFFER_SIZE                 BYTE_SIZE * 8
 
 #define WITH_DEBUG
 

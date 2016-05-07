@@ -6,7 +6,7 @@
 
 
 #define DEFAULT_LEVEL 1
-#define DEFAULT_MILLISECONDS 1000
+#define DEFAULT_MILLISECONDS 500
 
 class Game
 {
@@ -50,7 +50,7 @@ public:
     void SetPoints(uint32 _points) { m_points = _points; }
 
     uint32 GetLevel() const { return m_level; }
-    void SetLevel(uint32 _level) { m_level = _level; }
+    void SetLevel(uint32 _level) { m_level = std::max<int32>(1, _level); }
 
     uint32 GetCurrentBlockID() { return m_currentBlockId; }
     void SetCurrentBlockID(uint32 _currentBlockId) { m_currentBlockId = _currentBlockId; }
@@ -65,6 +65,8 @@ public:
     const Block* GetNextBlock() const { return m_nextBlock; }
 
     void SetNextBlock(Block* block) { m_nextBlock = block; }
+
+    float GetSpeed() const;
 
 private:
     Block* m_activeBlock;

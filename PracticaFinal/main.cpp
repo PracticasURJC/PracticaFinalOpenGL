@@ -250,6 +250,12 @@ void funKeyboardUp(unsigned char key, int x, int y)
         else
             game->ResumeGame();
         break;
+    case '+':
+        game->SetLevel(game->GetLevel() + 1);
+        break;
+    case '-':
+        game->SetLevel(game->GetLevel() - 1);
+        break;
     default:
         break;
     }
@@ -732,7 +738,7 @@ void renderText(float x, float y, void *font, const unsigned char* string)
 void drawPoints()
 {
     unsigned char points[BUFFER_SIZE];
-    std::string pointsString = "· Puntuacion: " + std::to_string(game->GetPoints()) + "\n· Nivel: " + std::to_string(game->GetLevel());
+    std::string pointsString = "· Puntuacion: " + std::to_string(game->GetPoints()) + "\n· Nivel: " + std::to_string(game->GetLevel()) + "\n· Velocidad: " + std::to_string(game->GetSpeed());
     strcpy_s((char*)points, BUFFER_SIZE, pointsString.c_str());
     renderText(POINTS_X, POINTS_Y, GLUT_BITMAP_9_BY_15, points);
 }

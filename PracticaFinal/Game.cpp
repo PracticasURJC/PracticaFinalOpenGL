@@ -153,7 +153,12 @@ void Game::RotateActiveBlock()
 
 uint64 Game::GetNextMoveTime()
 {
-    return uint64(clock() + float(DEFAULT_MILLISECONDS) + (float(m_level / (m_level + 1)) * 700.0f));
+    return uint64(clock() + (DEFAULT_MILLISECONDS / 2.0f) + float(DEFAULT_MILLISECONDS) * GetSpeed());
+}
+
+float Game::GetSpeed() const
+{
+    return float(-(std::logf(m_level) / std::logf(20.0f)) + 2.0f);
 }
 
 void Game::MoveBlock(bool right)
@@ -178,21 +183,20 @@ void Game::DropBlock()
 void Game::CheckLineCompleted()
 {
     std::vector<float> linesCompleted;
-    for (float y = 0.0f; y < MAX_HEIGHT; y += 1.0f)
+    for (uint32 y = 0; y < MAX_HEIGHT; y++)
     {
         uint8 i = 0;
-        for (float x = 0.0f; x < MAX_WIDTH; x += 1.0f)
+        for (uint32 x = 0; x < MAX_WIDTH; x++)
         {
-            if (!GetSubBlockInPosition(x, y))
+            if (!GetSubBlockInPosition(float(x), float(y)))
                 break;
 
             i++;
         }
-        DEBUG_LOG("CheckLine: Coincidences: %u\n", i);
 
         // Insert line completed if all X positions are filled with subblocks
         if (i >= MAX_WIDTH)
-            linesCompleted.push_back(y);
+            linesCompleted.push_back(float(y));
     }
 
     if (linesCompleted.empty())
@@ -201,9 +205,9 @@ void Game::CheckLineCompleted()
     DEBUG_LOG("Lines completed: ");
     for (float i : linesCompleted)
     {
-        for (float x = 0.0f; x < MAX_WIDTH; x += 1.0f)
+        for (uint32 x = 0; x < MAX_WIDTH; x++)
         {
-            SubBlock* sub = GetSubBlockInPosition(x, i);
+            SubBlock* sub = GetSubBlockInPosition(float(x), i);
             if (!sub)
             {
                 DEBUG_LOG("Incorrect line completed.\n");
@@ -212,7 +216,7 @@ void Game::CheckLineCompleted()
 
             sub->Delete();
         }
-        DEBUG_LOG("%u", i);
+        DEBUG_LOG("[%f]", i);
     }
     DEBUG_LOG("\n");
 
@@ -289,4 +293,9 @@ void Game::DeleteSubBlock(SubBlock* subBlock)
 
 void Game::IncreaseBlockSpeed()
 {
+    if (m_activeBlock && m_activeBlock->CanDropBlock())
+    {
+        m_activeBlock->SetPositionY(m_activeBlock->GetPositionY() - 1.0f);
+        m_nextMoveTime = GetNextMoveTime();
+    }
 }
